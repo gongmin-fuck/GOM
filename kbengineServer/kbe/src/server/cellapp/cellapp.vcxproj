@@ -210,7 +210,9 @@
   <ItemGroup>
     <ClCompile Include="..\..\lib\dependencies\openssl\include\openssl\applink.c" />
     <ClCompile Include="all_clients.cpp" />
-    <ClCompile Include="aoi_trigger.cpp" />
+    <ClCompile Include="entity_component.cpp" />
+    <ClCompile Include="space.cpp" />
+    <ClCompile Include="view_trigger.cpp" />
     <ClCompile Include="cell.cpp" />
     <ClCompile Include="cellapp.cpp" />
     <ClCompile Include="cellapp_interface.cpp" />
@@ -243,8 +245,8 @@
     <ClCompile Include="range_trigger_node.cpp" />
     <ClCompile Include="real_entity_method.cpp" />
     <ClCompile Include="rotator_handler.cpp" />
-    <ClCompile Include="space.cpp" />
-    <ClCompile Include="spaces.cpp" />
+    <ClCompile Include="spacememory.cpp" />
+    <ClCompile Include="spacememorys.cpp" />
     <ClCompile Include="space_viewer.cpp" />
     <ClCompile Include="trap_trigger.cpp" />
     <ClCompile Include="turn_controller.cpp" />
@@ -256,7 +258,8 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="all_clients.h" />
-    <ClInclude Include="aoi_trigger.h" />
+    <ClInclude Include="space.h" />
+    <ClInclude Include="view_trigger.h" />
     <ClInclude Include="cell.h" />
     <ClInclude Include="cellapp.h" />
     <ClInclude Include="cellapp_interface.h" />
@@ -289,8 +292,8 @@
     <ClInclude Include="range_trigger_node.h" />
     <ClInclude Include="real_entity_method.h" />
     <ClInclude Include="rotator_handler.h" />
-    <ClInclude Include="space.h" />
-    <ClInclude Include="spaces.h" />
+    <ClInclude Include="spacememory.h" />
+    <ClInclude Include="spacememorys.h" />
     <ClInclude Include="space_viewer.h" />
     <ClInclude Include="trap_trigger.h" />
     <ClInclude Include="turn_controller.h" />
@@ -301,7 +304,8 @@
     <ClInclude Include="witnessed_timeout_handler.h" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="aoi_trigger.inl" />
+    <None Include="space.inl" />
+    <None Include="view_trigger.inl" />
     <None Include="coordinate_node.inl" />
     <None Include="coordinate_system.inl" />
     <None Include="entity.inl" />

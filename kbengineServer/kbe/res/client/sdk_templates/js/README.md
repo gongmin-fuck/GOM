@@ -15,13 +15,13 @@ Usage
 		KBEngine.create(args);
 
 	2: Implment the KBE defined entity (including the client part)
-		See: kbengine\kbengine_demos_assets\scripts\entities.xml£¬hasClient="true" need to implment
+		See: kbengine\kbengine_demos_assets\scripts\entities.xml, hasClient="true" need to implment
 			<Account hasClient="true"></Account>
 			<Monster hasClient="true"></Monster>
 			<Gate hasClient="true"></Gate>
 			<Space/>
 
-			KBEngine.Account = KBEngine.Entity.extend(
+			KBEngine.Account = KBEngine.AccountBase.extend(
 			{
 				// entity initialization
 				__init__ : function()
@@ -33,6 +33,8 @@ Usage
 		Call entity server method
 			entity.baseCall("base_func", 1, "arg2", "argN")
 			entity.cellCall("cell_func", 1, "arg2", "argN")
+
+		Reference: https://github.com/kbengine/kbengine/issues/532
 
 	3: Monitor KBE-plugins event
 		For example:
@@ -267,6 +269,31 @@ KBE-Plugin fire-out events(KBE => Unity):
 
 			Event-datas: 
 				No datas.
+
+	Download events:
+		onStreamDataStarted
+			Description: 
+				Start downloading data.
+
+			Event-datas: 
+				uint16: resouce id
+				uint32: data size
+				string: description
+
+		onStreamDataRecv
+			Description: 
+				Receive data.
+
+			Event-datas: 
+				uint16: resouce id
+				bytes: datas
+
+		onStreamDataCompleted
+			Description: 
+				The downloaded data is completed.
+
+			Event-datas: 
+				uint16: resouce id
 
 
 

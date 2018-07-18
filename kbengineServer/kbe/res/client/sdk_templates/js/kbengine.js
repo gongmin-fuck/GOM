@@ -3,70 +3,67 @@ var KBEngine = KBEngine || {};
 /*-----------------------------------------------------------------------------------------
 					    	JavaScript Inheritance
 -----------------------------------------------------------------------------------------*/
-/* Simple JavaScript Inheritance
- * By John Resig http://ejohn.org/
+/* Simple JavaScript Inheritance for ES 5.1
+ * based on http://ejohn.org/blog/simple-javascript-inheritance/
+ *  (inspired by base2 and Prototype)
  * MIT Licensed.
  */
+
+// The base Class implementation (does nothing)
 KBEngine.Class = function(){};
-KBEngine.Class.extend = function (prop) {
-    var _super = this.prototype;
+// Create a new Class that inherits from this class
+KBEngine.Class.extend = function(props) {
+	var _super = this.prototype;
+    var fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
+	// Set up the prototype to inherit from the base class
+	// (but without running the ctor constructor)
+	var proto = Object.create(_super);
 
-    // Instantiate a base class (but only create the instance,
-    // don't run the init constructor)
-    initializing = true;
-    var prototype = Object.create(_super);
-    initializing = false;
-    fnTest = /xyz/.test(function(){xyz;}) ? /\b_super\b/ : /.*/;
+	// Copy the properties over onto the new prototype
+	for (var name in props) {
+		// Check if we're overwriting an existing function
+		proto[name] = typeof props[name] === "function" &&
+		typeof _super[name] == "function" && fnTest.test(props[name])
+			? (function(name, fn){
+				return function() {
+					var tmp = this._super;
 
-    // Copy the properties over onto the new prototype
-    for (var name in prop) {
-        // Check if we're overwriting an existing function
-        prototype[name] = typeof prop[name] == "function" &&
-            typeof _super[name] == "function" && fnTest.test(prop[name]) ?
-            (function (name, fn) {
-                return function () {
-                    var tmp = this._super;
+					// Add a new ._super() method that is the same method
+					// but on the super-class
+					this._super = _super[name];
 
-                    // Add a new ._super() method that is the same method
-                    // but on the super-class
-                    this._super = _super[name];
+					// The method only need to be bound temporarily, so we
+					// remove it when we're done executing
+					var ret = fn.apply(this, arguments);
+					this._super = tmp;
 
-                    // The method only need to be bound temporarily, so we
-                    // remove it when we're done executing
-                    var ret = fn.apply(this, arguments);
-                    this._super = tmp;
+					return ret;
+				};
+			})(name, props[name])
+			: props[name];
+	}
 
-                    return ret;
-                };
-            })(name, prop[name]) :
-            prop[name];
-    }
+	// The new constructor
+	var newClass = typeof proto.ctor === "function"
+		? proto.hasOwnProperty("ctor")
+			? proto.ctor // All construction is actually done in the ctor method
+			: function SubClass(){ _super.ctor.apply(this, arguments); }
+		: function EmptyClass(){};
 
-    // The dummy class constructor
-    function Class() {
-        // All construction is actually done in the init method
-        if (!initializing) {
-            if (!this.ctor) {
-                if (this.__nativeObj)
-                    KBEngine.INFO_MSG("No ctor function found!");
-            }
-            else {
-                this.ctor.apply(this, arguments);
-            }
-        }
-    }
+	// Populate our constructed prototype object
+	newClass.prototype = proto;
 
-    // Populate our constructed prototype object
-    Class.prototype = prototype;
+	// Enforce the constructor to be what we expect
+	proto.constructor = newClass;
 
-    // Enforce the constructor to be what we expect
-    Class.prototype.constructor = Class;
+	// And make this class extendable
+	newClass.extend = KBEngine.Class.extend;
 
-    // And make this class extendable
-    Class.extend = arguments.callee;
-
-    return Class;
+	return newClass;
 };
+
+// export
+window.Class = KBEngine.Class;
 
 /*-----------------------------------------------------------------------------------------
 												global
@@ -268,7 +265,7 @@ KBEngine.Event = function()
 	
 	this.register = function(evtName, classinst, strCallback)
 	{
-		var callbackfn = eval("classinst." + strCallback);
+		var callbackfn = classinst[strCallback];
 		if(callbackfn == undefined)
 		{
 			KBEngine.ERROR_MSG('KBEngine.Event::fire: not found strCallback(' + classinst  + ")!"+strCallback);  
@@ -288,7 +285,7 @@ KBEngine.Event = function()
 	
 	this.deregister = function(evtName, classinst)
 	{
-		for(itemkey in this._events)
+		for(var itemkey in this._events)
 		{
 			var evtlst = this._events[itemkey];
 			while(true)
@@ -497,7 +494,7 @@ KBEngine.MemoryStream = function(size_or_buffer)
 
 	this.readBlob = function()
 	{
-		size = this.readUint32();
+		var size = this.readUint32();
 		var buf = new Uint8Array(this.buffer, this.rpos, size);
 		this.rpos += size;
 		return buf;
@@ -567,7 +564,7 @@ KBEngine.MemoryStream = function(size_or_buffer)
 		
 	this.writeInt32 = function(v)
 	{
-		for(i=0; i<4; i++)
+		for(var i=0; i<4; i++)
 			this.writeInt8(v >> i * 8 & 0xff);
 	}
 
@@ -592,7 +589,7 @@ KBEngine.MemoryStream = function(size_or_buffer)
 		
 	this.writeUint32 = function(v)
 	{
-		for(i=0; i<4; i++)
+		for(var i=0; i<4; i++)
 			this.writeUint8(v >> i * 8 & 0xff);
 	}
 
@@ -642,7 +639,7 @@ KBEngine.MemoryStream = function(size_or_buffer)
 
 	this.writeBlob = function(v)
 	{
-		size = v.length;
+		var size = v.length;
 		if(size + 4> this.space())
 		{
 			KBEngine.ERROR_MSG("memorystream::writeBlob: no free!");
@@ -654,14 +651,14 @@ KBEngine.MemoryStream = function(size_or_buffer)
 		
 		if(typeof(v) == "string")
 		{
-			for(i=0; i<size; i++)
+			for(var i=0; i<size; i++)
 			{
 				buf[i] = v.charCodeAt(i);
 			}
 		}
 		else
 		{
-			for(i=0; i<size; i++)
+			for(var i=0; i<size; i++)
 			{
 				buf[i] = v[i];
 			}
@@ -680,7 +677,7 @@ KBEngine.MemoryStream = function(size_or_buffer)
 		
 		var buf = new Uint8Array(this.buffer, this.wpos);
 		var i = 0;
-		for(idx=0; idx<v.length; idx++)
+		for(var idx=0; idx<v.length; idx++)
 		{
 			buf[i++] = v.charCodeAt(idx);
 		}
@@ -796,10 +793,10 @@ KBEngine.Bundle = function()
 	{
 		this.fini(true);
 		
-		for(i=0; i<this.memorystreams.length; i++)
+		for(var i=0; i<this.memorystreams.length; i++)
 		{
-			stream = this.memorystreams[i];
-			network.send(stream.getbuffer());
+			var tmpStream = this.memorystreams[i];
+			network.send(tmpStream.getbuffer());
 		}
 		
 		this.memorystreams = new Array();
@@ -909,7 +906,7 @@ KBEngine.mappingDataType = function(writer, argType)
 	KBEngine.datatype2id["DATATYPE"] = 2;
 	KBEngine.datatype2id["CHAR"] = 2;
 	KBEngine.datatype2id["DETAIL_TYPE"] = 2;
-	KBEngine.datatype2id["MAIL_TYPE"] = 2;
+	KBEngine.datatype2id["ENTITYCALL_CALL_TYPE"] = 2;
 
 	KBEngine.datatype2id["UINT16"] = 3;
 	KBEngine.datatype2id["UNSIGNED SHORT"] = 3;
@@ -950,7 +947,7 @@ KBEngine.mappingDataType = function(writer, argType)
 	KBEngine.datatype2id["PY_DICT"] = 10;
 	KBEngine.datatype2id["PY_TUPLE"] = 10;
 	KBEngine.datatype2id["PY_LIST"] = 10;
-	KBEngine.datatype2id["MAILBOX"] = 10;
+	KBEngine.datatype2id["ENTITYCALL"] = 10;
 
 	KBEngine.datatype2id["BLOB"] = 11;
 
@@ -1125,7 +1122,7 @@ KBEngine.Message = function(id, name, length, argstype, args, handler)
 	this.argsType = argstype;
 	
 	// 绑定执行
-	for(i=0; i<args.length; i++)
+	for(var i=0; i<args.length; i++)
 	{
 		args[i] = KBEngine.bindReader(args[i]);
 	}
@@ -1139,7 +1136,7 @@ KBEngine.Message = function(id, name, length, argstype, args, handler)
 			return msgstream;
 		
 		var result = new Array(this.args.length);
-		for(i=0; i<this.args.length; i++)
+		for(var i=0; i<this.args.length; i++)
 		{
 			result[i] = this.args[i].call(msgstream);
 		}
@@ -1274,7 +1271,7 @@ KBEngine.Entity = KBEngine.Class.extend(
 	callPropertysSetMethods : function()
 	{
 		var currModule = KBEngine.moduledefs[this.className];
-		for(name in currModule.propertys)
+		for(var name in currModule.propertys)
 		{
 			var propertydata = currModule.propertys[name];
 			var properUtype = propertydata[0];
@@ -1353,7 +1350,7 @@ KBEngine.Entity = KBEngine.Class.extend(
 			return;
 		}
 		
-		this.base.newMail();
+		this.base.newCall();
 		this.base.bundle.writeUint16(methodID);
 		
 		try
@@ -1378,7 +1375,7 @@ KBEngine.Entity = KBEngine.Class.extend(
 			return;
 		}
 		
-		this.base.postMail();
+		this.base.sendCall();
 	},
 	
 	cellCall : function()
@@ -1412,7 +1409,7 @@ KBEngine.Entity = KBEngine.Class.extend(
 			return;
 		}
 		
-		this.cell.newMail();
+		this.cell.newCall();
 		this.cell.bundle.writeUint16(methodID);
 		
 		try
@@ -1437,7 +1434,7 @@ KBEngine.Entity = KBEngine.Class.extend(
 			return;
 		}
 		
-		this.cell.postMail();
+		this.cell.sendCall();
 	},
 	
 	enterWorld : function()
@@ -1517,46 +1514,46 @@ KBEngine.Entity = KBEngine.Class.extend(
 });
 
 /*-----------------------------------------------------------------------------------------
-												mailbox
+												EntityCall
 -----------------------------------------------------------------------------------------*/
-KBEngine.MAILBOX_TYPE_CELL = 0;
-KBEngine.MAILBOX_TYPE_BASE = 1;
+KBEngine.ENTITYCALL_TYPE_CELL = 0;
+KBEngine.ENTITYCALL_TYPE_BASE = 1;
 
-KBEngine.Mailbox = function()
+KBEngine.EntityCall = function()
 {
 	this.id = 0;
 	this.className = "";
-	this.type = KBEngine.MAILBOX_TYPE_CELL;
+	this.type = KBEngine.ENTITYCALL_TYPE_CELL;
 	this.networkInterface = KBEngine.app;
 	
 	this.bundle = null;
 	
 	this.isBase = function()
 	{
-		return this.type == KBEngine.MAILBOX_TYPE_BASE;
+		return this.type == KBEngine.ENTITYCALL_TYPE_BASE;
 	}
 
 	this.isCell = function()
 	{
-		return this.type == KBEngine.MAILBOX_TYPE_CELL;
+		return this.type == KBEngine.ENTITYCALL_TYPE_CELL;
 	}
 	
-	this.newMail = function()
+	this.newCall = function()
 	{  
 		if(this.bundle == null)
 			this.bundle = new KBEngine.Bundle();
 		
-		if(this.type == KBEngine.MAILBOX_TYPE_CELL)
+		if(this.type == KBEngine.ENTITYCALL_TYPE_CELL)
 			this.bundle.newMessage(KBEngine.messages.Baseapp_onRemoteCallCellMethodFromClient);
 		else
-			this.bundle.newMessage(KBEngine.messages.Base_onRemoteMethodCall);
+			this.bundle.newMessage(KBEngine.messages.Entity_onRemoteMethodCall);
 
 		this.bundle.writeInt32(this.id);
 		
 		return this.bundle;
 	}
 	
-	this.postMail = function(bundle)
+	this.sendCall = function(bundle)
 	{
 		if(bundle == undefined)
 			bundle = this.bundle;
@@ -1592,7 +1589,7 @@ KBEngine.DATATYPE_UINT8 = function()
 
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1629,7 +1626,7 @@ KBEngine.DATATYPE_UINT16 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1666,7 +1663,7 @@ KBEngine.DATATYPE_UINT32 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1703,7 +1700,7 @@ KBEngine.DATATYPE_UINT64 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1730,7 +1727,7 @@ KBEngine.DATATYPE_INT8 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1767,7 +1764,7 @@ KBEngine.DATATYPE_INT16 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1804,7 +1801,7 @@ KBEngine.DATATYPE_INT32 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1841,7 +1838,7 @@ KBEngine.DATATYPE_INT64 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseInt(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1868,7 +1865,7 @@ KBEngine.DATATYPE_FLOAT = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseFloat(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1895,7 +1892,7 @@ KBEngine.DATATYPE_DOUBLE = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return parseFloat(v);
 	}
 	
 	this.isSameType = function(v)
@@ -1922,7 +1919,10 @@ KBEngine.DATATYPE_STRING = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		if(typeof(v) == "string")
+			return v;
+		
+		return "";
 	}
 	
 	this.isSameType = function(v)
@@ -1969,7 +1969,7 @@ KBEngine.DATATYPE_VECTOR2 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return new KBEngine.Vector2(0.0, 0.0);
 	}
 	
 	this.isSameType = function(v)
@@ -2023,7 +2023,7 @@ KBEngine.DATATYPE_VECTOR3 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return new KBEngine.Vector3(0.0, 0.0, 0.0);
 	}
 	
 	this.isSameType = function(v)
@@ -2048,12 +2048,14 @@ KBEngine.DATATYPE_VECTOR4 = function()
 		if(KBEngine.CLIENT_NO_FLOAT)
 		{
 			return new KBEngine.Vector4(KBEngine.reader.readInt32.call(stream), 
-				KBEngine.reader.readInt32.call(stream), KBEngine.reader.readInt32.call(stream));
+				KBEngine.reader.readInt32.call(stream), KBEngine.reader.readInt32.call(stream), 
+				KBEngine.reader.readInt32.call(stream));
 		}
 		else
 		{
 			return new KBEngine.Vector4(KBEngine.reader.readFloat.call(stream), 
-				KBEngine.reader.readFloat.call(stream), KBEngine.reader.readFloat.call(stream));
+				KBEngine.reader.readFloat.call(stream), KBEngine.reader.readFloat.call(stream), 
+				KBEngine.reader.readFloat.call(stream));
 		}
 		
 		return undefined;
@@ -2079,7 +2081,7 @@ KBEngine.DATATYPE_VECTOR4 = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return new KBEngine.Vector4(0.0, 0.0, 0.0, 0.0);
 	}
 	
 	this.isSameType = function(v)
@@ -2109,7 +2111,7 @@ KBEngine.DATATYPE_PYTHON = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return new Uint8Array();
 	}
 	
 	this.isSameType = function(v)
@@ -2148,7 +2150,7 @@ KBEngine.DATATYPE_UNICODE = function()
 	}
 }
 
-KBEngine.DATATYPE_MAILBOX = function()
+KBEngine.DATATYPE_ENTITYCALL = function()
 {
 	this.bind = function()
 	{
@@ -2164,7 +2166,7 @@ KBEngine.DATATYPE_MAILBOX = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return new Uint8Array();
 	}
 	
 	this.isSameType = function(v)
@@ -2194,7 +2196,7 @@ KBEngine.DATATYPE_BLOB = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return new Uint8Array();
 	}
 	
 	this.isSameType = function(v)
@@ -2238,7 +2240,7 @@ KBEngine.DATATYPE_ARRAY = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return [];
 	}
 	
 	this.isSameType = function(v)
@@ -2262,7 +2264,7 @@ KBEngine.DATATYPE_FIXED_DICT = function()
 	
 	this.bind = function()
 	{
-		for(itemkey in this.dicttype)
+		for(var itemkey in this.dicttype)
 		{
 			var utype = this.dicttype[itemkey];
 			
@@ -2274,7 +2276,7 @@ KBEngine.DATATYPE_FIXED_DICT = function()
 	this.createFromStream = function(stream)
 	{
 		var datas = {};
-		for(itemkey in this.dicttype)
+		for(var itemkey in this.dicttype)
 		{
 			datas[itemkey] = this.dicttype[itemkey].createFromStream(stream);
 		}
@@ -2284,7 +2286,7 @@ KBEngine.DATATYPE_FIXED_DICT = function()
 	
 	this.addToStream = function(stream, v)
 	{
-		for(itemkey in this.dicttype)
+		for(var itemkey in this.dicttype)
 		{
 			this.dicttype[itemkey].addToStream(stream, v[itemkey]);
 		}
@@ -2292,12 +2294,12 @@ KBEngine.DATATYPE_FIXED_DICT = function()
 	
 	this.parseDefaultValStr = function(v)
 	{
-		return eval(v);
+		return {};
 	}
 	
 	this.isSameType = function(v)
 	{
-		for(itemkey in this.dicttype)
+		for(var itemkey in this.dicttype)
 		{
 			if(!this.dicttype[itemkey].isSameType(v[itemkey]))
 			{
@@ -2328,7 +2330,7 @@ KBEngine.datatypes["VECTOR3"]	= new KBEngine.DATATYPE_VECTOR3;
 KBEngine.datatypes["VECTOR4"]	= new KBEngine.DATATYPE_VECTOR4;
 KBEngine.datatypes["PYTHON"]	= new KBEngine.DATATYPE_PYTHON();
 KBEngine.datatypes["UNICODE"]	= new KBEngine.DATATYPE_UNICODE();
-KBEngine.datatypes["MAILBOX"]	= new KBEngine.DATATYPE_MAILBOX();
+KBEngine.datatypes["ENTITYCALL"]= new KBEngine.DATATYPE_ENTITYCALL();
 KBEngine.datatypes["BLOB"]		= new KBEngine.DATATYPE_BLOB();
 
 /*-----------------------------------------------------------------------------------------
@@ -2339,7 +2341,8 @@ KBEngine.KBEngineArgs = function()
 	this.ip = "127.0.0.1";
 	this.port = @{KBE_USE_ALIAS_ENTITYID};
 	this.updateHZ = @{KBE_UPDATEHZ} * 10;
-	
+	this.serverHeartbeatTick = 15;
+
 	// Reference: http://www.kbengine.org/docs/programming/clientsdkprogramming.html, client types
 	this.clientType = 5;
 
@@ -2385,7 +2388,8 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	// 服务端分配的baseapp地址
 	this.baseappIP = "";
-	this.baseappPort = 0;
+	this.baseappTcpPort = 0;
+	this.baseappUdpPort = 0;
 
 	this.resetSocket = function()
 	{
@@ -2614,7 +2618,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 			return;
 
 		var dateObject = new Date();
-		if((dateObject.getTime() - KBEngine.app.lastTickTime) / 1000 > 15)
+		if((dateObject.getTime() - KBEngine.app.lastTickTime) / 1000 > KBEngine.app.args.serverHeartbeatTick)
 		{
 			// 如果心跳回调接收时间小于心跳发送时间，说明没有收到回调
 			// 此时应该通知客户端掉线了
@@ -2795,7 +2799,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 			KBEngine.app.createDataTypeFromStream(stream, canprint);
 		};	
 		
-		for(datatype in KBEngine.datatypes)
+		for(var datatype in KBEngine.datatypes)
 		{
 			if(KBEngine.datatypes[datatype] != undefined)
 			{
@@ -2817,7 +2821,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 			</onRemoveAvatar>				
 		*/
 		if(valname.length == 0)
-			length = "Null_" + utype;
+			valname = "Null_" + utype;
 			
 		if(canprint)
 			KBEngine.INFO_MSG("KBEngineApp::Client_onImportClientEntityDef: importAlias(" + name + ":" + valname + ")!");
@@ -2885,16 +2889,9 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 			var self_propertys = currModuleDefs["propertys"];
 			var self_methods = currModuleDefs["methods"];
 			var self_base_methods = currModuleDefs["base_methods"];
-			var self_cell_methods= currModuleDefs["cell_methods"];
+			var self_cell_methods = currModuleDefs["cell_methods"];
 			
-			try
-			{
-				var Class = eval("KBEngine." + scriptmodule_name);
-			}
-			catch(e)
-			{
-				var Class = undefined;
-			}
+			var Class = KBEngine[scriptmodule_name];
 			
 			while(propertysize > 0)
 			{
@@ -3005,17 +3002,14 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 				KBEngine.INFO_MSG("KBEngineApp::Client_onImportClientEntityDef: add(" + scriptmodule_name + "), cell_method(" + name + ").");
 			};
 			
-			try
-			{
-				defmethod = eval("KBEngine." + scriptmodule_name);
-			}
-			catch(e)
+			var defmethod = KBEngine[scriptmodule_name];
+
+			if(defmethod == undefined)
 			{
 				KBEngine.ERROR_MSG("KBEngineApp::Client_onImportClientEntityDef: module(" + scriptmodule_name + ") not found!");
-				defmethod = undefined;
 			}
 			
-			for(name in currModuleDefs.propertys)
+			for(var name in currModuleDefs.propertys)
 			{
 				var infos = currModuleDefs.propertys[name];
 				var properUtype = infos[0];
@@ -3028,7 +3022,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 					defmethod.prototype[name] = utype.parseDefaultValStr(defaultValStr);
 			};
 
-			for(name in currModuleDefs.methods)
+			for(var name in currModuleDefs.methods)
 			{
 				var infos = currModuleDefs.methods[name];
 				var properUtype = infos[0];
@@ -3279,8 +3273,8 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 		if(noconnect)
 		{
 			KBEngine.Event.fire("onLoginBaseapp");
-			KBEngine.INFO_MSG("KBEngineApp::login_baseapp: start connect to ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappPort + "!");
-			KBEngine.app.connect("ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappPort);
+			KBEngine.INFO_MSG("KBEngineApp::login_baseapp: start connect to ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappTcpPort + "!");
+			KBEngine.app.connect("ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappTcpPort);
 			
 			if(KBEngine.app.socket != undefined && KBEngine.app.socket != null)
 				KBEngine.app.socket.onopen = KBEngine.app.onOpenBaseapp;  
@@ -3296,14 +3290,18 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	}
 	
 	this.reloginBaseapp = function()
-	{  
+	{
+		var dateObject = new Date();
+		KBEngine.app.lastTickTime = dateObject.getTime();
+		KBEngine.app.lastTickCBTime = dateObject.getTime();
+		
 		if(KBEngine.app.socket != undefined && KBEngine.app.socket != null)
 			return;
 		
 		KBEngine.app.resetSocket();
 		KBEngine.Event.fire("onReloginBaseapp");
-		KBEngine.INFO_MSG("KBEngineApp::reloginBaseapp: start connect to ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappPort + "!");
-		KBEngine.app.connect("ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappPort);
+		KBEngine.INFO_MSG("KBEngineApp::reloginBaseapp: start connect to ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappTcpPort + "!");
+		KBEngine.app.connect("ws://" + KBEngine.app.baseappIp + ":" + KBEngine.app.baseappTcpPort);
 		
 		if(KBEngine.app.socket != undefined && KBEngine.app.socket != null)
 			KBEngine.app.socket.onopen = KBEngine.app.onReOpenBaseapp;  
@@ -3356,11 +3354,12 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 		var accountName = args.readString();
 		KBEngine.app.username = accountName;
 		KBEngine.app.baseappIp = args.readString();
-		KBEngine.app.baseappPort = args.readUint16();
+		KBEngine.app.baseappTcpPort = args.readUint16();
+		KBEngine.app.baseappUdpPort = args.readUint16();
 		KBEngine.app.serverdatas = args.readBlob();
 		
 		KBEngine.INFO_MSG("KBEngineApp::Client_onLoginSuccessfully: accountName(" + accountName + "), addr(" + 
-				KBEngine.app.baseappIp + ":" + KBEngine.app.baseappPort + "), datas(" + KBEngine.app.serverdatas.length + ")!");
+				KBEngine.app.baseappIp + ":" + KBEngine.app.baseappTcpPort + ":" + KBEngine.app.baseappUdpPort + "), datas(" + KBEngine.app.serverdatas.length + ")!");
 		
 		KBEngine.app.disconnect();
 		KBEngine.app.login_baseapp(true);
@@ -3391,7 +3390,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 		var runclass = KBEngine.app.entityclass[entityType];
 		if(runclass == undefined)
 		{
-			runclass = eval("KBEngine." + entityType);
+			runclass = KBEngine[entityType];
 			if(runclass == undefined)
 			{
 				KBEngine.ERROR_MSG("KBEngineApp::getentityclass: entityType(" + entityType + ") is error!");
@@ -3423,10 +3422,10 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 			entity.id = eid;
 			entity.className = entityType;
 			
-			entity.base = new KBEngine.Mailbox();
+			entity.base = new KBEngine.EntityCall();
 			entity.base.id = eid;
 			entity.base.className = entityType;
-			entity.base.type = KBEngine.MAILBOX_TYPE_BASE;
+			entity.base.type = KBEngine.ENTITYCALL_TYPE_BASE;
 			
 			KBEngine.app.entities[eid] = entity;
 			
@@ -3454,7 +3453,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 		}
 	}
 	
-	this.getAoiEntityIDFromStream = function(stream)
+	this.getViewEntityIDFromStream = function(stream)
 	{
 		var id = 0;
 		if(KBEngine.app.entityIDAliasIDList.Length > 255)
@@ -3535,7 +3534,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 
 	this.Client_onUpdatePropertysOptimized = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		KBEngine.app.onUpdatePropertys_(eid, stream);
 	}
 	
@@ -3581,7 +3580,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onRemoteMethodCallOptimized = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		KBEngine.app.onRemoteMethodCall_(eid, stream);
 	}
 	
@@ -3614,7 +3613,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 		var entity = KBEngine.app.entities[eid];
 		if(entity == undefined)
 		{
-			entityMessage = KBEngine.bufferedCreateEntityMessages[eid];
+			var entityMessage = KBEngine.bufferedCreateEntityMessages[eid];
 			if(entityMessage == undefined)
 			{
 				KBEngine.ERROR_MSG("KBEngineApp::Client_onEntityEnterWorld: entity(" + eid + ") not found!");
@@ -3629,10 +3628,10 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 			entity.id = eid;
 			entity.className = entityType;
 			
-			entity.cell = new KBEngine.Mailbox();
+			entity.cell = new KBEngine.EntityCall();
 			entity.cell.id = eid;
 			entity.cell.className = entityType;
-			entity.cell.type = KBEngine.MAILBOX_TYPE_CELL;
+			entity.cell.type = KBEngine.ENTITYCALL_TYPE_CELL;
 			
 			KBEngine.app.entities[eid] = entity;
 			
@@ -3655,10 +3654,10 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 		{
 			if(!entity.inWorld)
 			{
-				entity.cell = new KBEngine.Mailbox();
+				entity.cell = new KBEngine.EntityCall();
 				entity.cell.id = eid;
 				entity.cell.className = entityType;
-				entity.cell.type = KBEngine.MAILBOX_TYPE_CELL;
+				entity.cell.type = KBEngine.ENTITYCALL_TYPE_CELL;
 
 				// 安全起见， 这里清空一下
 				// 如果服务端上使用giveClientTo切换控制权
@@ -3686,7 +3685,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 
 	this.Client_onEntityLeaveWorldOptimized = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		KBEngine.app.Client_onEntityLeaveWorld(eid);
 	}
 	
@@ -4038,7 +4037,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		var entity = KBEngine.app.entities[eid];
 		if(entity == undefined)
 		{
@@ -4078,7 +4077,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_ypr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var y = stream.readInt8();
 		var p = stream.readInt8();
@@ -4089,7 +4088,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_yp = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var y = stream.readInt8();
 		var p = stream.readInt8();
@@ -4099,7 +4098,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_yr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var y = stream.readInt8();
 		var r = stream.readInt8();
@@ -4109,7 +4108,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_pr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var p = stream.readInt8();
 		var r = stream.readInt8();
@@ -4119,7 +4118,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_y = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var y = stream.readInt8();
 		
@@ -4128,7 +4127,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_p = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var p = stream.readInt8();
 		
@@ -4137,7 +4136,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_r = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var r = stream.readInt8();
 		
@@ -4146,7 +4145,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		
@@ -4155,7 +4154,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_ypr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4168,7 +4167,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_yp = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4180,7 +4179,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_yr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4192,7 +4191,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_pr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4204,7 +4203,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_y = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4215,7 +4214,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_p = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4226,7 +4225,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xz_r = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 
@@ -4237,7 +4236,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4247,7 +4246,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_ypr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4261,7 +4260,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_yp = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4274,7 +4273,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_yr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4287,7 +4286,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_pr = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4300,7 +4299,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_y = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4312,7 +4311,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_p = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4324,7 +4323,7 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onUpdateData_xyz_r = function(stream)
 	{
-		var eid = KBEngine.app.getAoiEntityIDFromStream(stream);
+		var eid = KBEngine.app.getViewEntityIDFromStream(stream);
 		
 		var xz = stream.readPackXZ();
 		var y = stream.readPackY();
@@ -4403,14 +4402,19 @@ KBEngine.KBEngineApp = function(kbengineArgs)
 	
 	this.Client_onStreamDataStarted = function(id, datasize, descr)
 	{
+		KBEngine.Event.fire("onStreamDataStarted", id, datasize, descr);
 	}
 	
 	this.Client_onStreamDataRecv = function(stream)
 	{
+		var id = stream.readUint16();
+		var data = stream.readBlob();
+		KBEngine.Event.fire("onStreamDataRecv", id, data);
 	}
 	
 	this.Client_onStreamDataCompleted = function(id)
 	{
+		KBEngine.Event.fire("onStreamDataCompleted", id);
 	}
 	
 	this.Client_onReqAccountResetPasswordCB = function(failedcode)
@@ -4476,5 +4480,10 @@ KBEngine.destroy = function()
 	KBEngine.app.uninstallEvents();
 	KBEngine.app.reset();
 	KBEngine.app = undefined;
+}
+
+if(module != undefined)
+{
+	module.exports = KBEngine;
 }
 

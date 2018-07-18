@@ -14,24 +14,27 @@ public class KBEMain : MonoBehaviour
 	
 	// 在unity3d界面中可见选项
 	public DEBUGLEVEL debugLevel = DEBUGLEVEL.DEBUG;
-	public bool isMultiThreads = true;
+	public bool isMultiThreads = false;
 	public string ip = "127.0.0.1";
 	public int port = @{KBE_LOGIN_PORT};
 	public KBEngineApp.CLIENT_TYPE clientType = KBEngineApp.CLIENT_TYPE.CLIENT_TYPE_MINI;
-	public bool syncPlayer = true;
+	public int syncPlayerMS = 100;
 	public int threadUpdateHZ = @{KBE_UPDATEHZ};
-	public int SEND_BUFFER_MAX = (int)KBEngine.NetworkInterface.TCP_PACKET_MAX;
-	public int RECV_BUFFER_MAX = (int)KBEngine.NetworkInterface.TCP_PACKET_MAX;
+	public int serverHeartbeatTick = 15;
+	public int TCP_SEND_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.TCP_PACKET_MAX;
+	public int TCP_RECV_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.TCP_PACKET_MAX;
+	public int UDP_SEND_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.UDP_PACKET_MAX;
+	public int UDP_RECV_BUFFER_MAX = (int)KBEngine.NetworkInterfaceBase.UDP_PACKET_MAX;
 	public bool useAliasEntityID = @{KBE_USE_ALIAS_ENTITYID};
 	public bool isOnInitCallPropertysSetMethods = true;
 
-	void Awake() 
+	protected virtual void Awake() 
 	 {
 		DontDestroyOnLoad(transform.gameObject);
 	 }
  
 	// Use this for initialization
-	void Start () 
+	protected virtual void Start () 
 	{
 		MonoBehaviour.print("clientapp::start()");
 		installEvents();
@@ -53,14 +56,17 @@ public class KBEMain : MonoBehaviour
 		args.ip = ip;
 		args.port = port;
 		args.clientType = clientType;
-		args.syncPlayer = syncPlayer;
+		args.syncPlayerMS = syncPlayerMS;
 		args.threadUpdateHZ = threadUpdateHZ;
+		args.serverHeartbeatTick = serverHeartbeatTick;
 		args.useAliasEntityID = useAliasEntityID;
 		args.isOnInitCallPropertysSetMethods = isOnInitCallPropertysSetMethods;
 
-		args.SEND_BUFFER_MAX = (UInt32)SEND_BUFFER_MAX;
-		args.RECV_BUFFER_MAX = (UInt32)RECV_BUFFER_MAX;
-		
+		args.TCP_SEND_BUFFER_MAX = (UInt32)TCP_SEND_BUFFER_MAX;
+		args.TCP_RECV_BUFFER_MAX = (UInt32)TCP_RECV_BUFFER_MAX;
+		args.UDP_SEND_BUFFER_MAX = (UInt32)UDP_SEND_BUFFER_MAX;
+		args.UDP_RECV_BUFFER_MAX = (UInt32)UDP_RECV_BUFFER_MAX;
+
 		args.isMultiThreads = isMultiThreads;
 		
 		if(isMultiThreads)
@@ -69,7 +75,7 @@ public class KBEMain : MonoBehaviour
 			gameapp = new KBEngineApp(args);
 	}
 	
-	void OnDestroy()
+	protected virtual void OnDestroy()
 	{
 		MonoBehaviour.print("clientapp::OnDestroy(): begin");
         if (KBEngineApp.app != null)
@@ -80,7 +86,7 @@ public class KBEMain : MonoBehaviour
 		MonoBehaviour.print("clientapp::OnDestroy(): end");
 	}
 	
-	void FixedUpdate () 
+	protected virtual void FixedUpdate () 
 	{
 		KBEUpdate();
 	}

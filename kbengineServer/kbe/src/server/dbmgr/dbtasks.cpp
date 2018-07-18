@@ -1,22 +1,4 @@
-/*
-This source file is part of KBEngine
-For the latest info, see http://www.kbengine.org/
-
-Copyright (c) 2008-2017 KBEngine.
-
-KBEngine is free software: you can redistribute it and/or modify
-it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-
-KBEngine is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU Lesser General Public License for more details.
- 
-You should have received a copy of the GNU Lesser General Public License
-along with KBEngine.  If not, see <http://www.gnu.org/licenses/>.
-*/
+// Copyright 2008-2018 Yolo Technologies, Inc. All Rights Reserved. https://www.comblockengine.com
 
 #include "dbtasks.h"
 #include "dbmgr.h"
@@ -399,7 +381,7 @@ thread::TPTask::TPTaskState DBTaskRemoveEntity::presentMainThread()
 }
 
 //-------------------------------------------------------------------------------------
-DBTaskDeleteBaseByDBID::DBTaskDeleteBaseByDBID(const Network::Address& addr, COMPONENT_ID componentID, 
+DBTaskDeleteEntityByDBID::DBTaskDeleteEntityByDBID(const Network::Address& addr, COMPONENT_ID componentID, 
 		DBID entityDBID, CALLBACK_ID callbackID, ENTITY_SCRIPT_UID sid):
 DBTask(addr),
 componentID_(componentID),
@@ -413,12 +395,12 @@ entityInAppID_(0)
 }
 
 //-------------------------------------------------------------------------------------
-DBTaskDeleteBaseByDBID::~DBTaskDeleteBaseByDBID()
+DBTaskDeleteEntityByDBID::~DBTaskDeleteEntityByDBID()
 {
 }
 
 //-------------------------------------------------------------------------------------
-bool DBTaskDeleteBaseByDBID::db_thread_process()
+bool DBTaskDeleteEntityByDBID::db_thread_process()
 {
 	EntityTables& entityTables = EntityTables::findByInterfaceName(pdbi_->name());
 	KBEEntityLogTable* pELTable = static_cast<KBEEntityLogTable*>
@@ -449,21 +431,21 @@ bool DBTaskDeleteBaseByDBID::db_thread_process()
 }
 
 //-------------------------------------------------------------------------------------
-thread::TPTask::TPTaskState DBTaskDeleteBaseByDBID::presentMainThread()
+thread::TPTask::TPTaskState DBTaskDeleteEntityByDBID::presentMainThread()
 {
 	ScriptDefModule* pModule = EntityDef::findScriptModule(sid_);
 
-	DEBUG_MSG(fmt::format("Dbmgr::DBTaskDeleteBaseByDBID: {}({}), entityInAppID({}).\n", 
+	DEBUG_MSG(fmt::format("Dbmgr::DBTaskDeleteEntityByDBID: {}({}), entityInAppID({}).\n", 
 		pModule->getName(), entityDBID_, entityInAppID_));
 
 	Network::Bundle* pBundle = Network::Bundle::createPoolObject();
-	(*pBundle).newMessage(BaseappInterface::deleteBaseByDBIDCB);
+	(*pBundle).newMessage(BaseappInterface::deleteEntityByDBIDCB);
 
 	(*pBundle) << success_ << entityID_ << entityInAppID_ << callbackID_ << sid_ << entityDBID_;
 
 	if(!this->send(pBundle))
 	{
-		ERROR_MSG(fmt::format("DBTaskDeleteBaseByDBID::presentMainThread: channel({}) not found.\n", addr_.c_str()));
+		ERROR_MSG(fmt::format("DBTaskDeleteEntityByDBID::presentMainThread: channel({}) not found.\n", addr_.c_str()));
 		Network::Bundle::reclaimPoolObject(pBundle);
 	}
 
@@ -528,7 +510,7 @@ thread::TPTask::TPTaskState DBTaskEntityAutoLoad::presentMainThread()
 }
 
 //-------------------------------------------------------------------------------------
-DBTaskLookUpBaseByDBID::DBTaskLookUpBaseByDBID(const Network::Address& addr, COMPONENT_ID componentID, 
+DBTaskLookUpEntityByDBID::DBTaskLookUpEntityByDBID(const Network::Address& addr, COMPONENT_ID componentID, 
 		DBID entityDBID, CALLBACK_ID callbackID, ENTITY_SCRIPT_UID sid):
 DBTask(addr),
 componentID_(componentID),
@@ -543,12 +525,12 @@ logger_(0)
 }
 
 //-------------------------------------------------------------------------------------
-DBTaskLookUpBaseByDBID::~DBTaskLookUpBaseByDBID()
+DBTaskLookUpEntityByDBID::~DBTaskLookUpEntityByDBID()
 {
 }
 
 //-------------------------------------------------------------------------------------
-bool DBTaskLookUpBaseByDBID::db_thread_process()
+bool DBTaskLookUpEntityByDBID::db_thread_process()
 {
 	EntityTables& entityTables = EntityTables::findByInterfaceName(pdbi_->name());
 	KBEEntityLogTable* pELTable = static_cast<KBEEntityLogTable*>
@@ -585,27 +567,27 @@ bool DBTaskLookUpBaseByDBID::db_thread_process()
 }
 
 //-------------------------------------------------------------------------------------
-thread::TPTask::TPTaskState DBTaskLookUpBaseByDBID::presentMainThread()
+thread::TPTask::TPTaskState DBTaskLookUpEntityByDBID::presentMainThread()
 {
 	ScriptDefModule* pModule = EntityDef::findScriptModule(sid_);
 	
-	DEBUG_MSG(fmt::format("Dbmgr::DBTaskLookUpBaseByDBID: {}({}), entityInAppID({}).\n", 
+	DEBUG_MSG(fmt::format("Dbmgr::DBTaskLookUpEntityByDBID: {}({}), entityInAppID({}).\n", 
 		pModule->getName(), entityDBID_, entityInAppID_));
 
 	if(logger_ > 0)
 	{
-		ERROR_MSG(fmt::format("DBTaskLookUpBaseByDBID::presentMainThread: entitylog({}) logger not match. logger_={}, self={}\n", 
+		ERROR_MSG(fmt::format("DBTaskLookUpEntityByDBID::presentMainThread: entitylog({}) logger not match. logger_={}, self={}\n", 
 			entityDBID_, logger_, g_componentID));
 	}
 	
 	Network::Bundle* pBundle = Network::Bundle::createPoolObject();
-	(*pBundle).newMessage(BaseappInterface::lookUpBaseByDBIDCB);
+	(*pBundle).newMessage(BaseappInterface::lookUpEntityByDBIDCB);
 
 	(*pBundle) << success_ << entityID_ << entityInAppID_ << callbackID_ << sid_ << entityDBID_;
 
 	if(!this->send(pBundle))
 	{
-		ERROR_MSG(fmt::format("DBTaskLookUpBaseByDBID::presentMainThread: channel({}) not found.\n", addr_.c_str()));
+		ERROR_MSG(fmt::format("DBTaskLookUpEntityByDBID::presentMainThread: channel({}) not found.\n", addr_.c_str()));
 		Network::Bundle::reclaimPoolObject(pBundle);
 	}
 
@@ -671,8 +653,8 @@ bool DBTaskCreateAccount::writeAccount(DBInterface* pdbi, const std::string& acc
 	{
 		if(pdbi->getlasterror() > 0)
 		{
-			WARNING_MSG(fmt::format("DBTaskCreateAccount::writeAccount(): queryAccount error: {}\n", 
-				pdbi->getstrerror()));
+			WARNING_MSG(fmt::format("DBTaskCreateAccount::writeAccount({}): queryAccount error: {}\n", 
+				accountName, pdbi->getstrerror()));
 		}
 
 		return false;
@@ -694,9 +676,15 @@ bool DBTaskCreateAccount::writeAccount(DBInterface* pdbi, const std::string& acc
 
 		entityDBID = EntityTables::findByInterfaceName(pdbi->name()).writeEntity(pdbi, 0, -1,
 				&copyAccountDefMemoryStream, pModule);
-	}
 
-	KBE_ASSERT(entityDBID > 0);
+		if (entityDBID <= 0)
+		{
+			WARNING_MSG(fmt::format("DBTaskCreateAccount::writeAccount({}): writeEntity error: {}\n",
+				accountName, pdbi->getstrerror()));
+
+			return false;
+		}
+	}
 
 	info.name = accountName;
 	info.email = accountName + "@0.0";
@@ -737,7 +725,7 @@ bool DBTaskCreateAccount::writeAccount(DBInterface* pdbi, const std::string& acc
 //-------------------------------------------------------------------------------------
 thread::TPTask::TPTaskState DBTaskCreateAccount::presentMainThread()
 {
-	DEBUG_MSG(fmt::format("Dbmgr::reqCreateAccount: {}.\n", registerName_.c_str()));
+	DEBUG_MSG(fmt::format("Dbmgr::reqCreateAccount: {}, success={}.\n", registerName_.c_str(), success_));
 
 	Network::Bundle* pBundle = Network::Bundle::createPoolObject();
 	(*pBundle).newMessage(LoginappInterface::onReqCreateAccountResult);
@@ -820,7 +808,7 @@ bool DBTaskCreateMailAccount::db_thread_process()
 
 	// 生成激活码并存储激活码到数据库
 	// 发送smtp邮件到邮箱， 用户点击确认后即可激活
-	getdatas_ = genmail_code(password_);
+	std::string codestr = genmail_code(password_);
 	KBEEmailVerificationTable* pTable1 = static_cast<KBEEmailVerificationTable*>(entityTables.findKBETable(KBE_TABLE_PERFIX "_email_verification"));
 	KBE_ASSERT(pTable1);
 	
@@ -842,6 +830,7 @@ bool DBTaskCreateMailAccount::db_thread_process()
 	}
 
 	password_ = KBE_MD5::getDigest(password_.data(), (int)password_.length());
+	getdatas_ = codestr;
 
 	success_ = pTable1->logAccount(pdbi_, (int8)KBEEmailVerificationTable::V_TYPE_CREATEACCOUNT, 
 		registerName_, password_, getdatas_);
@@ -1505,7 +1494,7 @@ bool DBTaskAccountLogin::db_thread_process()
 	// 如果Interfaces已经判断不成功就没必要继续下去
 	if(retcode_ != SERVER_SUCCESS)
 	{
-		ERROR_MSG(fmt::format("DBTaskAccountLogin::db_thread_process(): interfaces is failed!\n"));
+		ERROR_MSG(fmt::format("DBTaskAccountLogin::db_thread_process(): interfaces report failed({})!\n", retcode_));
 		return false;
 	}
 
@@ -1792,11 +1781,11 @@ thread::TPTask::TPTaskState DBTaskQueryEntity::presentMainThread()
 	Network::Bundle* pBundle = Network::Bundle::createPoolObject();
 
 	if(queryMode_ == 0)
-		pBundle->newMessage(BaseappInterface::onCreateBaseFromDBIDCallback);
+		pBundle->newMessage(BaseappInterface::onCreateEntityFromDBIDCallback);
 	else if(queryMode_ == 1)
-		pBundle->newMessage(BaseappInterface::onCreateBaseAnywhereFromDBIDCallback);
+		pBundle->newMessage(BaseappInterface::onCreateEntityAnywhereFromDBIDCallback);
 	else if (queryMode_ == 2)
-		pBundle->newMessage(BaseappInterface::onCreateBaseRemotelyFromDBIDCallback);
+		pBundle->newMessage(BaseappInterface::onCreateEntityRemotelyFromDBIDCallback);
 
 	(*pBundle) << componentID_;
 	(*pBundle) << pdbi_->dbIndex();
